@@ -99,14 +99,15 @@ hh_psc_moto_dynamics( double, const double y[], double f[], void* pnode )
   const double& dI_in = y[ S::DI_INH ];
   const double& I_in = y[ S::I_INH ];
 
-  const double alpha_n =
-    ( 0.01 * ( V + 55. ) ) / ( 1. - std::exp( -( V + 55. ) / 10. ) );
-  const double beta_n = 0.125 * std::exp( -( V + 65. ) / 80. );
+  const double n_inf = 1. / (1. + std::exp(-(V + 38.)/15.));
+  const double n_tau = 5. / (std::exp((V + 50.)/40.) + std::exp(-(V + 50.)/50.));
+
   const double alpha_m =
-    ( 0.1 * ( V + 40. ) ) / ( 1. - std::exp( -( V + 40. ) / 10. ) );
-  const double beta_m = 4. * std::exp( -( V + 65. ) / 18. );
-  const double alpha_h = 0.07 * std::exp( -( V + 65. ) / 20. );
-  const double beta_h = 1. / ( 1. + std::exp( -( V + 35. ) / 10. ) );
+    ( 0.4 * ( V + 66. ) ) / ( 1. - std::exp( -( V + 66. ) / 5. ) );
+  const double beta_m = ( 0.4 * -( V + 32. ) ) / (1. - std::exp(( V + 32. ) / 5.) );
+
+  const double h_inf = 1. / (1. + std::exp((V + 65.) / 7.));
+  const double h_tau = 30. / (std::exp((V + 60.)/15.) + std::exp(-(V + 60.)/16.));
 
   const double I_Na = node.P_.g_Na * m * m * m * h * ( V - node.P_.E_Na );
   const double I_K = node.P_.g_K * n * n * n * n * ( V - node.P_.E_K );
@@ -119,10 +120,8 @@ hh_psc_moto_dynamics( double, const double y[], double f[], void* pnode )
   // channel dynamics
   f[ S::HH_M ] =
     alpha_m * ( 1 - y[ S::HH_M ] ) - beta_m * y[ S::HH_M ]; // m-variable
-  f[ S::HH_H ] =
-    alpha_h * ( 1 - y[ S::HH_H ] ) - beta_h * y[ S::HH_H ]; // h-variable
-  f[ S::HH_N ] =
-    alpha_n * ( 1 - y[ S::HH_N ] ) - beta_n * y[ S::HH_N ]; // n-variable
+  f[ S::HH_H ] = ( h_inf - y[ S::HH_H ] ) / h_tau; // h-variable
+  f[ S::HH_N ] = ( n_inf - y[ S::HH_N ] ) / n_tau;
 
   // synapses: alpha functions
   f[ S::DI_EXC ] = -dI_ex / node.P_.tau_synE;
@@ -140,13 +139,13 @@ hh_psc_moto_dynamics( double, const double y[], double f[], void* pnode )
 
 nest::hh_psc_moto::Parameters_::Parameters_()
   : t_ref_( 2.0 )   // ms
-  , g_Na( 12000.0 ) // nS
-  , g_K( 3600.0 )   // nS
-  , g_L( 30.0 )     // nS
-  , C_m( 100.0 )    // pF
+  , g_Na( 5000.0 ) // nS
+  , g_K( 30000.0 )   // nS
+  , g_L( 200.0 )     // nS
+  , C_m( 200.0 )    // pF
   , E_Na( 50.0 )    // mV
-  , E_K( -77.0 )    // mV
-  , E_L( -54.402 )  // mV
+  , E_K( -80.0 )    // mV
+  , E_L( -70.0 )  // mV
   , tau_synE( 0.2 ) // ms
   , tau_synI( 2.0 ) // ms
   , I_e( 0.0 )      // pA
@@ -156,24 +155,21 @@ nest::hh_psc_moto::Parameters_::Parameters_()
 nest::hh_psc_moto::State_::State_( const Parameters_& )
   : r_( 0 )
 {
-  y_[ 0 ] = -65; // p.E_L;
+  y_[ 0 ] = -70.0; // p.E_L;
   for ( size_t i = 1; i < STATE_VEC_SIZE; ++i )
   {
     y_[ i ] = 0;
   }
 
   // equilibrium values for (in)activation variables
-  const double alpha_n = ( 0.01 * ( y_[ 0 ] + 55. ) )
-    / ( 1. - std::exp( -( y_[ 0 ] + 55. ) / 10. ) );
-  const double beta_n = 0.125 * std::exp( -( y_[ 0 ] + 65. ) / 80. );
+  const double n_inf = 1. / (1. + std::exp(-(y_[ 0 ] + 38.)/15.));
   const double alpha_m =
-    ( 0.1 * ( y_[ 0 ] + 40. ) ) / ( 1. - std::exp( -( y_[ 0 ] + 40. ) / 10. ) );
-  const double beta_m = 4. * std::exp( -( y_[ 0 ] + 65. ) / 18. );
-  const double alpha_h = 0.07 * std::exp( -( y_[ 0 ] + 65. ) / 20. );
-  const double beta_h = 1. / ( 1. + std::exp( -( y_[ 0 ] + 35. ) / 10. ) );
+    ( 0.4 * ( y_[ 0 ] + 66. ) ) / ( 1. - std::exp( -( y_[ 0 ] + 66. ) / 5. ) );
+  const double beta_m = ( 0.4 * -( y_[ 0 ] + 32. ) ) / (1. - std::exp(( y_[ 0 ] + 32. ) / 5.) );
+  const double h_inf = 1. / (1. + std::exp((y_[ 0 ] + 65.) / 7.));
 
-  y_[ HH_H ] = alpha_h / ( alpha_h + beta_h );
-  y_[ HH_N ] = alpha_n / ( alpha_n + beta_n );
+  y_[ HH_H ] = h_inf;
+  y_[ HH_N ] = n_inf;
   y_[ HH_M ] = alpha_m / ( alpha_m + beta_m );
 }
 
